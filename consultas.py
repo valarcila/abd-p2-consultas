@@ -29,7 +29,15 @@ otra fecha), así que para contar eventos hay que usar `_id`.
 # Devuelve, por cada género: genero, n (número de artistas) y artistas (lista
 # de nombres, ORDENADA). Ordenado por n descendente y, a igualdad, por genero.
 C1 = [
-    # TODO
+    db.artista.aggregate([
+        {$unwind: "$generos"},
+        {$group: {
+            _id: "$generos",
+            n: {$sum: 1},
+            artistas: {$addToSet: "$nombre"}
+        }},
+        {$sort: {n: -1, _id: -1}}
+    ])
 ]
 
 # ── C2 · Ocupación media por recinto ────────────────────────────────────────
