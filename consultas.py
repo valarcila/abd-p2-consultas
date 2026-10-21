@@ -99,7 +99,17 @@ C3 = [
 # recintos (número de recintos DISTINTOS en los que ha actuado). Ordenado por
 # actuaciones descendente y, a igualdad, por artista.
 C4 = [
-    # TODO
+    db.evento.aggregate([
+        {$unwind: "$artistas"},
+        {$group: {
+            artista: "$artistas",
+            actuaciones: {$sum: 1},
+            recintos: 
+
+        }}
+
+
+    ])
 ]
 
 # ── C5 · Recintos a menos de 5 km de la Puerta del Sol ──────────────────────
