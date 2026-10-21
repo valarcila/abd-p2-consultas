@@ -30,13 +30,22 @@ otra fecha), así que para contar eventos hay que usar `_id`.
 # de nombres, ORDENADA). Ordenado por n descendente y, a igualdad, por genero.
 C1 = [
     db.artista.aggregate([
-        {$unwind: "$generos"},
-        {$group: {
+        { $unwind: "$generos"},
+        { $group: {
             _id: "$generos",
             n: {$sum: 1},
             artistas: {$addToSet: "$nombre"}
         }},
-        {$sort: {n: -1, _id: -1}}
+        { $project: {
+            _id: 0,
+            genero: "$_id",
+            n: 1,
+            artistas: { $sortArray: {
+                input: "$artistas",
+                sortBy: 1
+            }}
+        }},
+        { $sort: {n: -1, genero: 1}}
     ])
 ]
 
