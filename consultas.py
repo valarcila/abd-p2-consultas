@@ -57,18 +57,30 @@ C1 = [
 C2 = [
     # TODO
     db.evento.aggregate([
-        {$unwind: "$recinto"},
+        { $lookup: {
+            from: "recintos",
+            localField: "recinto",
+            foreignField: "nombre",
+            as: "datos_recinto"
+        }},
+        {$unwind: "$datos_recinto"},
         {$group: {
             _id: "$recinto",
-            evento: "$titulo",
-            ocupacion_media: { $avg: "$entradas_vendidas"}/{ $lookup: {
-                from: "recintos",
-                localField: "recinto",
-                foreignField: "nombre",
-                as: "datos_recinto"
-                } "$aforo"}
-
-        }}
+            evento: {$sum: 1},
+            ocupacion_media: {
+                $avg: {
+                    $multiply: [
+                        { $divide: ["$entradas_vendidas", "$datos_recinto.aforo"] }, 
+                    100] 
+                }
+            }
+        }},
+        {$project:{
+            _id: 0,  recinto: "$_id", 
+            evento: 1,
+            ocupacion_media: {$round: ["$ocupacion_media", 1]}
+        }},
+        {$sort: {ocupacion_media: -1, recinto: 1}}
     ])
 ]
 
