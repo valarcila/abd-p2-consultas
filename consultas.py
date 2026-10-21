@@ -47,6 +47,20 @@ C1 = [
 # ocupacion_media descendente y, a igualdad, por recinto.
 C2 = [
     # TODO
+    db.evento.aggregate([
+        {$unwind: "$recinto"},
+        {$group: {
+            _id: "$recinto",
+            evento: "$titulo",
+            ocupacion_media: { $avg: "$entradas_vendidas"}/{ $lookup: {
+                from: "recintos",
+                localField: "recinto",
+                foreignField: "nombre",
+                as: "datos_recinto"
+                } "$aforo"}
+
+        }}
+    ])
 ]
 
 # ── C3 · Ingresos por mes ───────────────────────────────────────────────────
