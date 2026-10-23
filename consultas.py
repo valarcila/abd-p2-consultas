@@ -112,6 +112,8 @@ C4 = [
 # El punto de referencia es [-3.7038, 40.4168].
 # Devuelve, por cada recinto: recinto, ciudad, distancia_km redondeada a dos
 # decimales, y eventos (número de eventos de ese recinto).
+
+# db.recinto.createIndex({ "direccion_loc": "2dsphere" })
 C5 = [
     # TODO
 ]
@@ -145,7 +147,6 @@ C7 = [
 C8 = [
     # TODO
 ]
-
 
 # ── Contrato de entrega · no modificar ──────────────────────────────────────
 CONSULTAS = {
