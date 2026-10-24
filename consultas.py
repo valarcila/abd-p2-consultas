@@ -52,30 +52,30 @@ C1 = [
 C2 = [
     # TODO
     db.evento.aggregate([
-        { $lookup: {
-            from: "recintos",
-            localField: "recinto",
-            foreignField: "nombre",
-            as: "datos_recinto"
+        { "$lookup": {
+            "from": "recinto",
+                "localField": "recinto",
+                "foreignField": "nombre",
+            "as": "datos_recinto"
         }},
-        {$unwind: "$datos_recinto"},
-        {$group: {
-            _id: "$recinto",
-            evento: {$sum: 1},
-            ocupacion_media: {
-                $avg: {
-                    $multiply: [
-                        { $divide: ["$entradas_vendidas", "$datos_recinto.aforo"] }, 
+        {"$unwind": "$datos_recinto"},
+        {"$group": {
+            "_id": "$recinto",
+            "evento": {"$sum": 1},
+            "ocupacion_media": {
+                "$avg": {
+                    "$multiply": [
+                        { "$divide": ["$entradas_vendidas", "$datos_recinto.aforo"] }, 
                     100] 
                 }
             }
         }},
-        {$project:{
-            _id: 0,  recinto: "$_id", 
-            evento: 1,
-            ocupacion_media: {$round: ["$ocupacion_media", 1]}
+        {"$project":{
+            "_id": 0,  "recinto": "$_id", 
+            "evento": 1,
+            "ocupacion_media": {"$round": ["$ocupacion_media", 1]}
         }},
-        {$sort: {ocupacion_media: -1, recinto: 1}}
+        {"$sort": {"ocupacion_media": -1, "recinto": 1}}
     ])
 ]
 
@@ -95,15 +95,19 @@ C3 = [
 # actuaciones descendente y, a igualdad, por artista.
 C4 = [
     db.evento.aggregate([
-        {$unwind: "$artistas"},
-        {$group: {
-            artista: "$artistas",
-            actuaciones: {$sum: 1},
-            recintos: 
-
+        {"$unwind": "$artistas"},
+        {"$group": {
+            "_id": "$artistas",
+            "actuaciones": {"$sum": 1},
+            "recinto": {"$addToSet": "$recinto"}
         }}
-
-
+        {"$project":{
+            "_id": 0,  "artistas": "$_id", 
+            "actuaciones": 1,
+            "recinto": 1
+        }},
+        {"$sort": {"actuaciones": -1, "artistas": 1}},
+        {"$limit": 3 }
     ])
 ]
 
@@ -125,7 +129,36 @@ C5 = [
 # Ordenado por titulo.
 C6 = [
     # TODO
+    db.evento.aggregate([
+        {"$match": {
+            "$expr": {"$gt": [{"$size": "$artista"}, 1]}
+        }},
+        {"$lookup": {
+            "from": "artista",
+                "localField": "artistas",
+                "foreignField": "nombre",
+            "as": "datos_eventosYartistas"
+        }},
+        {"unwind": "$datos_eventosYartistas"};
+        {"group:"{
+            "_id": "$titulo",
+            "recinto": "$recinto",
+            "cartel": { "$addToSet": {
+                "nombre": "$datos_eventosYartistas.nombre", 
+                "pais": "$datos_eventosYartistas.pais", 
+                "generos":"$datos_eventosYartistas.generos"
+            }}
+        }},
+        {"$project": {
+            "_id": 0, "titulo"="$_id",
+            "recinto": 1,
+            "cartel": { "$sortArray": { "input": "$artistas", "sortBy": 1 } }
+        }},
+        {"$sort": {"datos_eventosYartistas.nombre": 1}}
+
+    ])
 ]
+
 
 # ── C7 · Eventos por franja de ocupación ────────────────────────────────────
 # Colección: evento
