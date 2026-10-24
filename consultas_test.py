@@ -125,3 +125,124 @@ def test_c8_actualiza_en_lugar_de_sobrescribir(db, ejecuta):
         "la marca ha desaparecido: $out reemplaza la colección entera, "
         "hace falta $merge"
     )
+
+# ── Extra ───────────────────────────────────────────────────────────────────
+
+# comprobar empates entre genero
+def test_extra_c1_orden_generos(ejecuta):
+    filas = ejecuta('C1')
+
+    for i in range(len(filas) - 1):
+        actual = filas[i]
+        siguiente = filas[i + 1]
+
+        if actual['n'] == siguiente['n']:
+            assert actual['genero'] <= siguiente['genero']
+
+# comprobar ocupacion media
+def test_extra_c2_ocupacion_exacta(db, ejecuta):
+    filas = ejecuta('C2')
+
+    for fila in filas:
+        recinto = db.recinto.find_one({
+            'nombre': fila['recinto']
+        })
+
+        eventos = list(db.evento.find({
+            'recinto': fila['recinto']
+        }))
+
+        ocupaciones = [
+            evento['entradas_vendidas'] / recinto['aforo'] * 100
+            for evento in eventos
+        ]
+
+        media = sum(ocupaciones) / len(ocupaciones)
+
+        assert fila['ocupacion_media'] == pytest.approx(
+            round(media, 1), abs=0.1
+        )
+
+# comprobar ingresos por mes
+def test_extra_c3_ingresos_exactos(db, ejecuta):
+    filas = ejecuta('C3')
+
+    esperados = {}
+
+    for evento in db.evento.find():
+        mes = evento['fecha'].strftime('%Y-%m')
+
+        ingresos = sum(
+            zona['precio'] * zona['vendidas']
+            for zona in evento['precios_por_zona']
+        )
+
+        esperados[mes] = esperados.get(mes, 0) + ingresos
+
+    for fila in filas:
+        assert fila['ingresos'] == pytest.approx(
+            esperados[fila['mes']], abs=0.01
+        )
+
+# comprobar recintos distintos
+def test_extra_c4_recintos_distintos(db, ejecuta):
+    filas = ejecuta('C4')
+
+    for fila in filas:
+        recintos = db.evento.distinct(
+            'recinto',
+            {'artistas': fila['artista']}
+        )
+
+        assert fila['recintos'] == len(recintos)
+
+# comprobar orden de carteles
+def test_extra_c6_orden_cartel(ejecuta):
+    filas = ejecuta('C6')
+
+    for fila in filas:
+        nombres = [
+            artista['nombre']
+            for artista in fila['cartel']
+        ]
+
+        assert nombres == sorted(nombres)
+
+# comprobar clasificacion exacta
+def test_extra_c7_clasificacion(db, ejecuta):
+    filas = ejecuta('C7')
+
+    obtenidos = {
+        fila['franja']: fila['eventos']
+        for fila in filas
+    }
+
+    esperados = {
+        'agotado': 0,
+        'alta': 0,
+        'media': 0,
+        'baja': 0
+    }
+
+    for evento in db.evento.find():
+        recinto = db.recinto.find_one({
+            'nombre': evento['recinto']
+        })
+
+        ocupacion = (
+            evento['entradas_vendidas'] / recinto['aforo']
+        )
+
+        if ocupacion >= 0.99:
+            franja = 'agotado'
+        elif ocupacion >= 0.85:
+            franja = 'alta'
+        elif ocupacion >= 0.70:
+            franja = 'media'
+        else:
+            franja = 'baja'
+
+        esperados[franja] += 1
+
+    for franja in esperados:
+        assert obtenidos.get(franja, 0) == esperados[franja]

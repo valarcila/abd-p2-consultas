@@ -29,19 +29,19 @@ otra fecha), así que para contar eventos hay que usar `_id`.
 # Devuelve, por cada género: genero, n (número de artistas) y artistas (lista
 # de nombres, ORDENADA). Ordenado por n descendente y, a igualdad, por genero.
 C1 = [
-    { "$unwind": "$generos" },
-    { "$group": {
-        "_id": "$generos",
-        "n": { "$sum": 1 },
-        "artistas": { "$addToSet": "$nombre" }
+    { '$unwind': '$generos' },
+    { '$group': {
+        '_id': '$generos',
+        'n': { '$sum': 1 },
+        'artistas': { '$addToSet': '$nombre' }
     } },
-    { "$project": {
-        "_id": 0,
-        "genero": "$_id",
-        "n": 1,
-        "artistas": { "$sortArray": { "input": "$artistas", "sortBy": 1 } }
+    { '$project': {
+        '_id': 0,
+        'genero': '$_id',
+        'n': 1,
+        'artistas': { '$sortArray': { 'input': '$artistas', 'sortBy': 1 } }
     } },
-    { "$sort": { "n": -1, "genero": 1 } }
+    { '$sort': { 'n': -1, 'genero': 1 } }
 ]
 
 # ── C2 · Ocupación media por recinto ────────────────────────────────────────
@@ -50,31 +50,29 @@ C1 = [
 # en PORCENTAJE del aforo del recinto y redondeada a un decimal. Ordenado por
 # ocupacion_media descendente y, a igualdad, por recinto.
 C2 = [
-# TODO
-    { "$lookup": {
-        "from": "recinto",
-            "localField": "recinto",
-            "foreignField": "nombre",
-        "as": "datos_recinto"
-    }},
-    {"$unwind": "$datos_recinto"},
-    {"$group": {
-        "_id": "$recinto",
-        "eventos": {"$sum": 1},
-        "ocupacion_media": {
-            "$avg": {
-                "$multiply": [
-                    { "$divide": ["$entradas_vendidas", "$datos_recinto.aforo"] }, 
-                100] 
-            }
+    { '$lookup': {
+        'from': 'recinto',
+        'localField': 'recinto',
+        'foreignField': 'nombre',
+        'as': 'datos_recintos'
+    } },
+    { '$unwind': '$datos_recintos' },
+    { '$group': {
+        '_id': '$recinto',
+        'eventos': { '$sum': 1 },
+        'ocupacion_media': { '$avg': 
+            { '$multiply': 
+                [{ '$divide': ['$entradas_vendidas', '$datos_recintos.aforo'] }, 100] 
+            } 
         }
-    }},
-    {"$project":{
-        "_id": 0,  "recinto": "$_id", 
-        "eventos": 1,
-        "ocupacion_media": {"$round": ["$ocupacion_media", 1]}
-    }},
-    {"$sort": {"ocupacion_media": -1, "recinto": 1}}
+    } },
+    { '$project': {
+        '_id': 0,
+        'recinto': '$_id',
+        'eventos': 1,
+        'ocupacion_media': { '$round': ['$ocupacion_media', 1] }
+    } },
+    { '$sort': { 'ocupacion_media': -1, 'recinto': 1 } }
 ]
 
 # ── C3 · Ingresos por mes ───────────────────────────────────────────────────
@@ -118,20 +116,20 @@ C3 = [
 # recintos (número de recintos DISTINTOS en los que ha actuado). Ordenado por
 # actuaciones descendente y, a igualdad, por artista.
 C4 = [
-    #TODO
-    {"$unwind": "$artistas"},
-    {"$group": {
-        "_id": "$artistas",
-        "actuaciones": {"$sum": 1},
-        "recinto": {"$addToSet": "$recinto"}
-    }}
-    {"$project":{
-        "_id": 0,  "artista": "$_id", 
-        "actuaciones": 1,
-        "recintos": {"$size": "$recinto"}
-    }},
-    {"$sort": {"actuaciones": -1, "artista": 1}},
-    {"$limit": 3 }
+    { '$unwind': '$artistas' },
+    { '$group': {
+        '_id': '$artistas',
+        'actuaciones': { '$sum': 1 },
+        'recintos': { '$addToSet': '$recinto' }
+    } },
+    { '$project': {
+        '_id': 0,
+        'artista': '$_id',
+        'actuaciones': 1,
+        'recintos': { '$size': '$recintos' }
+    } },
+    { '$sort': { 'actuaciones': -1, 'artista': 1 } },
+    { '$limit': 3 }
 ]
 
 # ── C5 · Recintos a menos de 5 km de la Puerta del Sol ──────────────────────
@@ -140,36 +138,28 @@ C4 = [
 # Devuelve, por cada recinto: recinto, ciudad, distancia_km redondeada a dos
 # decimales, y eventos (número de eventos de ese recinto).
 
-# db.recinto.createIndex({ "direccion_loc": "2dsphere" })
-db.recinto.createIndex({ "direccion_loc": "2dsphere" })
+# db.recinto.createIndex({ 'direccion_loc': '2dsphere' })
+
 C5 = [
-    # TODO
-    {"geoNear":{
-        "near": {
-            "type": "Point",
-            "coordinates": [-3.7038, 40.4168]
-        },
-        "distanciaField": "distancia",
-        "maxDistance": 5000,
-        "spherical": True,
-        "key": "direccion_loc"
-    }}
-    {"$lookup": {
-        "from": "evento",
-            "localField": "nombre",
-            "foreignField": "recinto",
-        "as": "datos_recintos"
-    }},
-    {"$project":{
-        "_id":0,
-        "recinto": "$nombre",
-        "ciudad": 1,
-        "distancia_km": {"$round": [
-            {"$divide": 
-                ["$distancia", 1000]
-        }]},
-        "eventos": {"$size": "$datos_eventos"}
-    }}
+    { '$geoNear': {
+        'near': { 'type': 'Point', 'coordinates': [-3.7038, 40.4168]},
+        'distanceField': 'distancia',
+        'maxDistance': 5000,
+        'spherical': True
+    } },
+    { '$lookup': {
+        'from': 'evento',
+        'localField': 'nombre',
+        'foreignField': 'recinto',
+        'as': 'datos_eventos'
+    } },
+    { '$project': {
+        '_id': 0,
+        'recinto': '$nombre',
+        'ciudad': 1,
+        'distancia_km': { '$round': [{ '$divide': ['$distancia', 1000] }, 2] },
+        'eventos': { '$size': '$datos_eventos' }
+    } }
 ]
 
 # ── C6 · Cartel completo de los eventos con varios artistas ─────────────────
@@ -194,7 +184,7 @@ C6 = [
         "titulo": {"$first": "$titulo"},
         "recinto": {"$first": "$recinto"},
         "cartel": { 
-            "$psuh": {
+            "$push": {
                 "nombre": "$datos_artistas.nombre", 
                 "pais": "$datos_artistas.pais", 
                 "generos":"$datos_artistas.generos"
@@ -210,7 +200,6 @@ C6 = [
 
 ]
 
-
 # ── C7 · Eventos por franja de ocupación ────────────────────────────────────
 # Colección: evento
 # Clasifica cada evento según su ocupación sobre el aforo del recinto:
@@ -218,39 +207,36 @@ C6 = [
 # Devuelve, por franja: franja y eventos. Ordenado por eventos descendente y,
 # a igualdad, por franja.
 C7 = [
-    # TODO
-    { "$lookup": {
-        "from": "recinto",
-            "localField": "recinto",
-            "foreignField": "nombre",
-        "as": "datos_eventos"
-    }},
-    {"$unwind": "$datos_eventos"},
-    { "$addFields": {
-        "ocupacion": { "$divide": ["$entradas_vendidas", "$aforo"] }
-    }},
-    {"$addFields": {
-        "franja": { 
-            "$switch": {
-                "branches": [
-                { "case": { "$gte": ["$ocupacion", 0.99] }, "then": "agotado" },
-                { "case": { "$gte": ["$ocupacion", 0.85] }, "then": "alta" },
-                { "case": { "$gte": ["$ocupacion", 0.70] }, "then": "media" }
-                ],
-                "default": "baja"
-            }
-        }}
-    },
-    {"$group":{
-        "_id": "$franja",
-        "eventos": {"$sum": 1}
-    }},
-    {"$project": {
-        "_id": 0,
-        "franja":"$_id", 
-        "eventos": 1
-    }},
-    {"$sort": {"eventos": -1, "franja": 1}}
+    { '$lookup': {
+        'from': 'recinto',
+        'localField': 'recinto',
+        'foreignField': 'nombre',
+        'as': 'datos_recintos'
+    } },
+    { '$unwind': '$datos_recintos' },
+    { '$addFields': {
+        'ocupacion': { '$divide': ['$entradas_vendidas', '$datos_recintos.aforo'] }
+    } },
+    { '$addFields': {
+        'franja': { '$switch': {
+            'branches': [
+                { 'case': { '$gte': ['$ocupacion', 0.99] }, 'then': 'agotado' },
+                { 'case': { '$gte': ['$ocupacion', 0.85] }, 'then': 'alta' },
+                { 'case': { '$gte': ['$ocupacion', 0.70] }, 'then': 'media' }
+            ],
+            'default': 'baja'
+        } }
+    } },
+    { '$group': {
+        '_id': '$franja',
+        'eventos': { '$sum': 1 }
+    } },
+    { '$project': {
+        '_id': 0,
+        'franja': '$_id',
+        'eventos': 1
+    } },
+    { '$sort': { 'eventos': -1, 'franja': 1 } }
 ]
 
 # ── C8 · Informe materializado por recinto ──────────────────────────────────
@@ -291,14 +277,14 @@ C8 = [
         "aforo": {"$first": "$datos_recinto.aforo"}
     }},
     {"$project":{
-        "_id": 0, "recinto": "$_id",
+        "_id": 1,
         "ingresos": {"$round": ["$ingresos", 2]},
         "eventos": 1,
         "aforo": 1
-    }}
+    }},
     {"$merge": {
         "into": "informe_recintos",
-        "on": "recinto",
+        "on": "_id",
         "whenMatched": "merge",
         "whenNotMatched": "insert"
     }}
