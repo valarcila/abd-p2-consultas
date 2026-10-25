@@ -81,33 +81,26 @@ C2 = [
 # Devuelve, por cada mes: mes (formato "AAAA-MM"), ingresos redondeados a dos
 # decimales y eventos (número de eventos de ese mes). Ordenado por mes.
 C3 = [
-    # TODO
-    {"$group":{
-        "_id": { "$dateToString": { "format": "%Y-%m", "date": "$fecha" }},
-        "ingresos": {
-            "$sum": { 
-                "$reduce":{ 
-                    "input": "$precios_por_zona",
-                    "initialValue": 0,
-                    "in": {
-                        "$add": [
-                            "$$value",
-                            {"$multiply": [
-                                "$$this.precio", "$$this.vendidas"
-                            ]}
-                        ]
-                    }
-                }
-            }
+    { '$group': {
+        '_id': { '$dateToString': { 'format': '%Y-%m', 'date': '$fecha' } },
+        'ingresos': { '$sum': 
+            { '$reduce': {
+                'input': '$precios_por_zona',
+                'initialValue': 0,
+                'in': { '$add': [
+                    '$$value', { '$multiply':  ['$$this.precio', '$$this.vendidas'] } 
+                ] }
+            } }  
         },
-        "eventos": {"$sum": 1}
-    }},
-    {"$project": {
-        "_id": 0, "mes": "$_id",
-        "ingresos": {"$round": ["$ingresos", 2]},
-        "eventos": 1
-    }},
-    {"$sort": {"mes": 1}}
+        'eventos': { '$sum': 1 }
+    } },
+    { '$project': {
+        '_id': 0,
+        'mes': '$_id',
+        'ingresos': { '$round': ['$ingresos', 2] },
+        'eventos': 1
+    } },
+    { '$sort': { 'mes': 1 } }
 ]
 
 # ── C4 · Los tres artistas más programados ──────────────────────────────────
@@ -168,36 +161,31 @@ C5 = [
 # una lista con {nombre, pais, generos} de cada artista, ORDENADA por nombre.
 # Ordenado por titulo.
 C6 = [
-    # TODO
-    {"$match": {
-        "$expr": {"$gt": [{"$size": "$artistas"}, 1]}
-    }},
-    {"$lookup": {
-        "from": "artista",
-            "localField": "artistas",
-            "foreignField": "nombre",
-        "as": "datos_artistas"
-    }},
-    {"$unwind": "$datos_artistas"},
-    {"$group":{
-        "_id": "$_id",
-        "titulo": {"$first": "$titulo"},
-        "recinto": {"$first": "$recinto"},
-        "cartel": { 
-            "$push": {
-                "nombre": "$datos_artistas.nombre", 
-                "pais": "$datos_artistas.pais", 
-                "generos":"$datos_artistas.generos"
-        }}
-    }},
-    {"$project": {
-        "_id": 0, 
-        "titulo": 1,
-        "recinto": 1,
-        "cartel": { "$sortArray": { "input": "$cartel", "sortBy": {"nombre":1}}}
-    }},
-    {"$sort": {"titulo": 1}}
-
+    { '$match': { '$expr': { '$gt': [{ '$size': '$artistas' }, 1] } } },
+    { '$lookup': {
+        'from': 'artista',
+        'localField': 'artistas',
+        'foreignField': 'nombre',
+        'as': 'datos_artistas'
+    } },
+    { '$project': {
+        '_id': 0,
+        'titulo': 1,
+        'recinto': 1,
+        'cartel': { '$sortArray': {
+            'input': { '$map': {
+                'input': '$datos_artistas',
+                'as': 'artista',
+                'in': { 
+                    'nombre': '$$artista.nombre', 
+                    'pais': '$$artista.pais', 
+                    'generos': '$$artista.generos' 
+                }
+            } },
+            'sortBy': { 'nombre': 1 }
+        } }
+    } },
+    { '$sort': { 'titulo': 1 } }
 ]
 
 # ── C7 · Eventos por franja de ocupación ────────────────────────────────────
@@ -247,47 +235,39 @@ C7 = [
 # reemplazarla, de modo que se conserven los campos que se le hayan añadido
 # por fuera.
 C8 = [
-    # TODO
-    { "$lookup": {
-        "from": "recinto",
-            "localField": "recinto",
-            "foreignField": "nombre",
-        "as": "datos_recinto"
-    }},
-    {"$unwind": "$datos_recinto"},
-    {"$group": {
-        "_id": "$recinto",
-        "ingresos": {
-            "$sum": { 
-                "$reduce":{ 
-                    "input": "$precios_por_zona",
-                    "initialValue": 0,
-                    "in": {
-                        "$add": [
-                            "$$value",
-                            {"$multiply": [
-                                "$$this.precio", "$$this.vendidas"
-                            ]}
-                        ]
-                    }
-                }
-            }
+    { '$lookup': {
+        'from': 'recinto',
+        'localField': 'recinto',
+        'foreignField': 'nombre',
+        'as': 'datos_recintos'
+    } },
+    { '$unwind': '$datos_recintos' },
+    { '$group': {
+        '_id': '$recinto',
+        'ingresos': { '$sum': 
+            { '$reduce': {
+                'input': '$precios_por_zona',
+                'initialValue': 0,
+                'in': { '$add': [
+                    '$$value', { '$multiply':  ['$$this.precio', '$$this.vendidas'] } 
+                ] }
+            } }  
         },
-        "eventos": {"$sum": 1},
-        "aforo": {"$first": "$datos_recinto.aforo"}
-    }},
-    {"$project":{
-        "_id": 1,
-        "ingresos": {"$round": ["$ingresos", 2]},
-        "eventos": 1,
-        "aforo": 1
-    }},
-    {"$merge": {
-        "into": "informe_recintos",
-        "on": "_id",
-        "whenMatched": "merge",
-        "whenNotMatched": "insert"
-    }}
+        'eventos': { '$sum': 1 },
+        'aforo': { '$first': '$datos_recintos.aforo' }
+    } },
+    { '$project': {
+        '_id': 1,
+        'ingresos': { '$round': ['$ingresos', 2] },
+        'eventos': 1,
+        'aforo': 1
+    } },
+    { '$merge': {
+        'into': 'informe_recintos',
+        'on': '_id',
+        'whenMatched': 'merge',
+        'whenNotMatched': 'insert'
+    } }
 ]
 
 # ── Contrato de entrega · no modificar ──────────────────────────────────────
